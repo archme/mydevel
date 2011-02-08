@@ -1,40 +1,45 @@
 #!/usr/bin/python2
+## server.py
 
 import os
 import time
 import zmq
-from zmq.eventloop import ioloop, zmqstream
+from zmq.eventloop import ioloop
+from  multiprocessing import Process
 
-SRVQUEUE = "tcp://127.0.0.1:54321"
 
-loop = ioloop.IOLoop.instance()
+def worker(wrk_num):
+  loop = ioloop.IOLoop.instance()
 
-print 'Server', os.getpid()
+  print "Worker %i (%i)" % (wrk_num, os.getpid())
 
-context = zmq.Context()
-socket = context.socket(zmq.REP)
-#socket.bind(SRVQUEUE)
-socket.connect(SRVQUEUE)
+  context = zmq.Context()
+  socket = context.socket(zmq.REP)
+  socket.connect(SRVQUEUE)
 
-#stream = zmqstream.ZMQStream(socket, loop)
-
-#def rep_handler(request):
-def rep_handler(sock, events):
+  def rep_handler(sock, events):
     request = sock.recv_json()
-    print "RECIEVED: %s" % request
+    print "Worker %i RECIEVED: %s" % (wrk_num, request)
 
-    print "PROCESSING ..."
+    print "Worker %i PROCESSING ..." % (wrk_num)
     time.sleep(5)
 
-    print "REPLY: %s" % request
+    print "Worker %i REPLYING: %s" % (wrk_num, request)
     sock.send_json(request)
-    #socket.send(request[0])
 
-loop.add_handler(socket, rep_handler, zmq.POLLIN)
-#stream.on_recv(rep_handler)
+  loop.add_handler(socket, rep_handler, zmq.POLLIN)
+  try:
+    loop.start()
+  except KeyboardInterrupt:
+    print ""
+    print "Worker %i (%i) CANCELED !" % (wrk_num, os.getpid())
 
-try:
-  loop.start()
-except KeyboardInterrupt:
-  print ""
-  print "CANCELED"
+
+if __name__ == "__main__":
+  SRVQUEUE = "tcp://127.0.0.1:54321"
+  WORKERS = 10
+  
+  worker_pool = range(WORKERS)
+
+  for wrk_num in range(len(worker_pool)):
+      Process(target=worker, args=(wrk_num,)).start()
