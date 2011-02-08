@@ -11,6 +11,12 @@ def main():
   queue.bind_out('tcp://*:54321')
   queue.start()
 
+  queue1 = devices.basedevice.ProcessDevice(zmq.FORWARDER, zmq.SUB, zmq.PUB)
+  queue1.bind_in('tcp://*:23456')
+  queue1.bind_out('tcp://*:65432')
+  queue1.start()
+
+
   try:
     while True:
       time.sleep(1)
